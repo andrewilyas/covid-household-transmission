@@ -26,6 +26,23 @@ def compute_sd(individual_rh, total_sources):
     padded = np.pad(individual_rh, (0, total_sources), 'constant')
     return(np.std(padded)/np.sqrt(total_sources))
 
+def rejection_sample(a, b, fnr_range=(0.15, 0.35), ar_range=(0.18,0.43), S=10000000, correct_for_ar=True):
+    def likelihood(p):
+        return np.exp(a * np.log(p / a) + b * np.log((1-p) / b) + (a+b) * np.log(a+b))
+    fnrs = rnd.uniform(low=fnr_range[0], high=fnr_range[1], size=S)
+    ars  = rnd.uniform(low=ar_range[0],  high=ar_range[1],  size=S)
+    sars = rnd.uniform(low=0, high=1, size=S)
+    if correct_for_ar:
+        ps = (1-fnrs) * (1-ars) * sars
+    else:
+        ps = (1-fnrs) * sars
+    accept_probs = likelihood(ps)
+    accept = (rnd.uniform(low=0, high=1, size=S) < accept_probs)
+    fnrs = fnrs[accept]
+    ars = ars[accept]
+    sars = sars[accept]
+    conf_int = (np.quantile(sars, 0.025), np.median(sars), np.mean(sars), np.quantile(sars, 0.975))
+    return conf_int, sars, fnrs, ars
 ## -- Data Loading and Cleaning Utils -- ##
 def load_case_data(fname='../data/case_data_raw.csv'):
     # Load Data
